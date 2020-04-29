@@ -13,6 +13,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/kyma-incubator/compass/components/external-services-mock/internal/auditlog/security"
+
 	"github.com/gorilla/mux"
 	"github.com/kyma-incubator/compass/components/external-services-mock/pkg/health"
 	"github.com/pkg/errors"
@@ -50,7 +52,9 @@ func initHTTP(cfg config) http.Handler {
 	logger := logrus.New()
 	router := mux.NewRouter()
 	configChangeSvc := configurationchange.NewService()
+	securityEventService := security.NewService()
 
+	securityHandler := security.NewSecurityEventHandler(securityEventService, logger)
 	configChangeHandler := configurationchange.NewConfigurationHandler(configChangeSvc, logger)
 	oauthHandler := oauth.NewHandler(cfg.ClientSecret, cfg.ClientID)
 
@@ -61,6 +65,12 @@ func initHTTP(cfg config) http.Handler {
 	configurationchange.InitConfigurationChangeHandler(configChangeRouter, configChangeHandler)
 
 	router.HandleFunc("/audit-log/v2/oauth/token", oauthHandler.Generate).Methods(http.MethodPost)
+
+	router.HandleFunc("/auditlog/v2/security-events", securityHandler.Save).Methods(http.MethodPost)
+	router.HandleFunc("/auditlog/v2/security-events", securityHandler.List).Methods(http.MethodGet)
+	router.HandleFunc("/auditlog/v2/security-events/{id}", securityHandler.Get).Methods(http.MethodGet)
+	router.HandleFunc("/auditlog/v2/security-events/{id}", securityHandler.Delete).Methods(http.MethodDelete)
+
 	return router
 }
 
