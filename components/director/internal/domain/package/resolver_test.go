@@ -3,6 +3,7 @@ package mp_package_test
 import (
 	"context"
 	"errors"
+	"github.com/google/uuid"
 	"testing"
 
 	"github.com/kyma-incubator/compass/components/director/internal/model"
@@ -1456,4 +1457,16 @@ func TestResolver_InstanceAuths(t *testing.T) {
 		require.Error(t, err)
 		assert.EqualError(t, err, "Package cannot be empty")
 	})
+}
+
+func TestUUIDGeneration(t *testing.T) {
+	amount := 50000
+	uniqueMap := make(map[string]interface{}, 0)
+
+	for i := 0; i < amount; i++ {
+		id := uuid.New().String()
+		_, found := uniqueMap[id]
+		assert.False(t, found, "uuid is duplciated: %s", id)
+		uniqueMap[id] = struct{}{}
+	}
 }

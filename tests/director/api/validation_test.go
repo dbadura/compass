@@ -1,12 +1,15 @@
 package api
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/kyma-incubator/compass/components/director/pkg/str"
+	"io/ioutil"
+	"net/http"
 	"strings"
 	"testing"
-
-	"github.com/kyma-incubator/compass/components/director/pkg/str"
 
 	"github.com/kyma-incubator/compass/components/director/pkg/graphql"
 	"github.com/kyma-incubator/compass/tests/director/pkg/ptr"
@@ -545,4 +548,55 @@ func TestAddDocumentToPackage_Validation(t *testing.T) {
 	// THEN
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "validation error for type DocumentInput")
+}
+
+func TestLoadBigAmountOfRuntimes(t *testing.T) {
+	amount := 5000
+	//uniqueMap := make(map[string]interface{}, 0)
+
+	builder := strings.Builder{}
+	builder.WriteString("mutation {\n")
+
+	for i := 0; i < amount; i++ {
+		rtmName := fmt.Sprintf("runtime%d", i)
+		input := fixRuntimeInput(rtmName)
+
+		inputGQL, err := tc.graphqlizer.RuntimeInputToGQL(input)
+		require.NoError(t, err)
+
+		builder.WriteString(fmt.Sprintf(`
+			%s: registerRuntime(in: %s) {
+					%s
+				}
+			`,
+			rtmName, inputGQL, tc.gqlFieldsProvider.ForRuntime()))
+
+	}
+
+	builder.WriteString("\n}")
+
+	var requestBody bytes.Buffer
+	requestBodyObj := struct {
+		Query     string                 `json:"query"`
+		Variables map[string]interface{} `json:"variables"`
+	}{
+		Query: builder.String(),
+	}
+	err := json.NewEncoder(&requestBody).Encode(requestBodyObj)
+	require.NoError(t, err)
+	url := "http://localhost:3000/graphql"
+	req, _ := http.NewRequest("POST", url, &requestBody)
+
+	req.Header.Add("content-type", "application/json")
+	req.Header.Add("tenant", testTenants.GetDefaultTenantID())
+	req.Header.Add("authorization", "Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzY29wZXMiOiJhcHBsaWNhdGlvbjpyZWFkIGF1dG9tYXRpY19zY2VuYXJpb19hc3NpZ25tZW50OndyaXRlIGF1dG9tYXRpY19zY2VuYXJpb19hc3NpZ25tZW50OnJlYWQgaGVhbHRoX2NoZWNrczpyZWFkIGFwcGxpY2F0aW9uOndyaXRlIHJ1bnRpbWU6d3JpdGUgbGFiZWxfZGVmaW5pdGlvbjp3cml0ZSBsYWJlbF9kZWZpbml0aW9uOnJlYWQgcnVudGltZTpyZWFkIiwidGVuYW50IjoiM2U2NGViYWUtMzhiNS00NmEwLWIxZWQtOWNjZWUxNTNhMGFlIn0.")
+
+	res, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+	require.NoError(t, err)
+
+	fmt.Println(res)
+	fmt.Println(string(body))
 }

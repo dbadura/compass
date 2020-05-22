@@ -6,6 +6,7 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20200108200545-475eaeb16496 // indirect
 	github.com/avast/retry-go v2.5.0+incompatible
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/docker/docker v1.13.1
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/huandu/xstrings v1.3.0 // indirect
